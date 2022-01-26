@@ -1,0 +1,56 @@
+#CODE
+
+import cv2
+from cv2 import imshow
+import matplotlib.pyplot as plt
+
+#reading the image
+#u have to take the image with the same name and format,
+img=cv2.imread("your image.jpg")
+
+plt.figure(figsize=(14,8))
+#ORDINARY IMAGE
+plt.subplot(1,2,1)
+plt.title('Original image', size=18)
+plt.axis('off')
+
+#changing normal image into RGB image
+RGB_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#To show image below of ordinary image
+plt.imshow(RGB_img)
+#SKETCH
+plt.subplot(1,2,2)
+plt.title('Sketch', size=18)
+
+#Converting img into RGB
+RGB_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+#RGB into Grey
+grey_img=cv2.cvtColor(RGB_img, cv2.COLOR_BGR2GRAY)
+
+#Inverting grey img
+invert_img=cv2.bitwise_not(grey_img)
+
+'''
+Bluring Inverted image by GAUSSIAN BLUR 
+For creating sketch, we require only the prominent features (contrasting edges) from the image.
+For small images, kernel size of (3,3), (5,5) etc. will be sufficient.
+For large images,kernal size will obtain by using trial and error method.
+'''
+
+blur_img=cv2.GaussianBlur(invert_img, (111,111),0)
+
+#Again Inverting blur image
+invblur_img=cv2.bitwise_not(blur_img)
+
+'''
+now The sketch can be obtained by performing bit-wise division between 
+the grayscale image and the inverted-blurred image.
+'''
+sketch_img=cv2.divide(grey_img,invblur_img, scale=256.0)
+
+#Converting sketch into rgb sketch to add some black and white colours perfectly.
+rgb_sketch=cv2.cvtColor(sketch_img, cv2.COLOR_BGR2RGB)
+plt.imshow(rgb_sketch)
+plt.axis('off')
+plt.show()
