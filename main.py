@@ -21,47 +21,69 @@ exp=False
 ##--------------------------------Defined Functions--------------------------##
 
 def cartoonf():
-    global panelA, panelB
-    k=12
-    img=imag
-    data=np.float32(img).reshape((-1,3))
-    criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,20,0.001)
-
-    ret,label,center = cv2.kmeans(data,k,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
-    center=np.uint8(center)
-    result=center[label.flatten()]
-    result=result.reshape(img.shape)
-
-    edged=Image.fromarray(result)
+    if uploaded==True:
+        global panelA, panelB
+        numDownSamples = 1
+        numBilateralFilters = 50 
+        img_color = imag
+        for _ in range(numDownSamples): 
+            img_color = cv2.pyrDown(img_color) 
+        
+        for _ in range(numBilateralFilters): 
+            img_color = cv2.bilateralFilter(img_color, 9, 9, 7) 
+        
+        for _ in range(numDownSamples): 
+            img_color = cv2.pyrUp(img_color) 
+            
+        img_gray = cv2.cvtColor(img_color, cv2.COLOR_RGB2GRAY) 
+        img_blur = cv2.medianBlur(img_gray, 3) 
+        
+        img_edge = cv2.adaptiveThreshold(img_blur, 255,cv2.ADAPTIVE_THRESH_MEAN_C,
+                                                   cv2.THRESH_BINARY, 9, 2) 
     
-    edged=ImageTk.PhotoImage(edged)
+        (x,y,z) = img_color.shape 
+        img_edge = cv2.resize(img_edge,(y,x)) 
+        img_edge = cv2.cvtColor(img_edge, cv2.COLOR_GRAY2RGB) 
+        converted=cv2.bitwise_and(img_color, img_edge)
+        converted=cv2.cvtColor(converted,cv2.COLOR_BGR2RGB)
     
-    if panelB is None:
-        panelB=Label(image=edged)
-        panelB.image=edged
-        panelB.place(x=600,y=330)
+        converted=Image.fromarray(converted)
+        
+        converted=ImageTk.PhotoImage(converted)
+        
+        if panelB is None:
+            panelB=Label(image_cont,image=converted)
+            panelB.image=converted
+            panelB.pack(side=RIGHT,pady=10,padx=50)
+        else:
+            panelB.configure(image=converted)
+            panelB.image=converted
     else:
-        panelB.configure(image=edged)
-        panelB.image=edged
+        message()
 
-def w_sketch():
+def sketch_draw():
     if uploaded==True:
         global panelA, panelB
         image=imag
-        gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-        edged=cv2.Canny(gray,50,100)
+        RGB_img=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        grey_img=cv2.cvtColor(RGB_img, cv2.COLOR_BGR2GRAY)
+        invert_img=cv2.bitwise_not(grey_img)
+        blur_img=cv2.GaussianBlur(invert_img, (111,111),0) 
+        invblur_img=cv2.bitwise_not(blur_img)
+        sketch_img=cv2.divide(grey_img,invblur_img, scale=256.0)
+        rgb_sketch=cv2.cvtColor(sketch_img, cv2.COLOR_BGR2RGB)
         
-        edged=Image.fromarray(edged)
+        converted=Image.fromarray(rgb_sketch)
         
-        edged=ImageTk.PhotoImage(edged)
+        converted=ImageTk.PhotoImage(converted)
 
         if panelB is None:
-            panelB=Label(image=edged)
-            panelB.image=edged
+            panelB=Label(image_cont,image=converted)
+            panelB.image=converted
             panelB.pack(side=RIGHT,pady=10,padx=50)
         else:
-            panelB.configure(image=edged)
-            panelB.image=edged
+            panelB.configure(image=converted)
+            panelB.image=converted
     else:
         message()
 
@@ -76,9 +98,8 @@ def upload():
     image=Image.fromarray(image)
     image=ImageTk.PhotoImage(image)
     if panelA is None:
-        panelA=Label(image=image)
+        panelA=Label(image_cont,image=image)
         panelA.image=image
-        #original_title.pack(side=TOP,pady=5)
         panelA.pack(side=LEFT,pady=10,padx=50)
     else:
         panelA.configure(image=image)
@@ -92,12 +113,20 @@ def cv_modify(imagi):
     size=imagi.shape
     l=size[0]
     w=size[1]
-    if l >= w:
-        diff=l/w
-        imagi=cv2.resize(imagi,dsize=(int(500/diff),500),interpolation=cv2.INTER_CUBIC)
+    if l<500 or w<500:
+        if l >= w:
+            diff=l/w
+            imagi=cv2.resize(imagi,dsize=(int(300/diff),300),interpolation=cv2.INTER_CUBIC)
+        else:
+            diff=w/l
+            imagi=cv2.resize(imagi,dsize=((300,int(300/diff))),interpolation=cv2.INTER_CUBIC)
     else:
-        diff=w/l
-        imagi=cv2.resize(imagi,dsize=((500,int(500/diff))),interpolation=cv2.INTER_CUBIC)
+        if l >= w:
+            diff=l/w
+            imagi=cv2.resize(imagi,dsize=(int(500/diff),500),interpolation=cv2.INTER_CUBIC)
+        else:
+            diff=w/l
+            imagi=cv2.resize(imagi,dsize=((500,int(500/diff))),interpolation=cv2.INTER_CUBIC)
     return imagi
     
 def message():
@@ -117,7 +146,6 @@ root.title("Sketch Imagier")
 root.configure(bg='#3f00a7')
 screen_width=str(root.winfo_screenwidth() - 68)
 screen_height=str(root.winfo_screenheight()-68)
-print(screen_height,screen_width)
 root.geometry(screen_width+'x'+screen_height)
 root.minsize(int(screen_width),int(screen_height))
 root.maxsize(int(screen_width),int(screen_height))
@@ -132,7 +160,7 @@ convert=Label(root,text='Convert to:',bg='#3f00a7',font=label_font,fg='white').p
  
 ##-------------Options---------------------##
 options=Frame(root,bg='#3f00a7')
-sketch=Button(options,text='Sketch',bg='white',fg='black',activebackground='black',activeforeground='white',command=lambda:w_sketch()).pack(side=LEFT,padx=3)
+sketch=Button(options,text='Sketch',bg='white',fg='black',activebackground='black',activeforeground='white',command=lambda:sketch_draw()).pack(side=LEFT,padx=3)
 black_and_white=Button(options,text='B & W',bg='white',fg='black',activebackground='black',activeforeground='white').pack(side=LEFT,padx=3)
 cartoon=Button(options,text='Cartoon',bg='white',fg='black',activebackground='black',activeforeground='white',command=lambda:cartoonf()).pack(side=LEFT,padx=3)
 word_sketch=Button(options,text='Word Sketch',bg='white',fg='black',activebackground='black',activeforeground='white').pack(side=LEFT,padx=3)
@@ -145,8 +173,11 @@ divider=Canvas(root,width=int(screen_width)-100,height=1).pack(side=TOP)
 
 original_title=Label(root,text='Your Original Image:',font=img_title,bg='#3f00a7',fg='white')
 converted_title=Label(root,text='Your Converted Image:',font=img_title,bg='#3f00a7',fg='white')
+
+image_cont=Frame(root,bg='#3f00a7')
 panelA=None   
 panelB=None
+image_cont.pack(side=TOP)
 
 export=Button(root, text='Export',bg='white',font=bt_font,fg='black',activebackground='#bbbbbb',command=lambda:export()).pack(side=BOTTOM,pady=5)
 
