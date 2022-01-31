@@ -93,7 +93,7 @@ def upload():
     global imag,panelA,uploaded
     img=filedialog.askopenfilename()
     imag=cv2.imread(img)
-    imag=cv_modify(imag)
+    imag=modify(imag)
     image=cv2.cvtColor(imag,cv2.COLOR_BGR2RGB)
     image=Image.fromarray(image)
     image=ImageTk.PhotoImage(image)
@@ -109,7 +109,7 @@ def upload():
     return image
 
 
-def cv_modify(imagi):
+def modify(imagi):
     size=imagi.shape
     l=size[0]
     w=size[1]
